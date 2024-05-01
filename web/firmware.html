@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firmware upload</title>
+
+    <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+    <div>
+        <div class="card">
+            <div>
+            </div>
+            <form>
+                <fieldset id="forms__html5">
+                    <legend>Upload firmware</legend>
+                    <input id="file-upload" type="file" required />
+                    <button type="button" id="upload" class="status-ready" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5}
+                            stroke="currentColor" className="w-6 h-6">
+                            <path class="ready" strokeLinecap="round" strokeLinejoin="round"
+                                d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                            <path class="busy" stroke-linecap="round" stroke-linejoin="round"
+                                d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+                            <path class="error" stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                        </svg>
+                        Upload
+                    </button>
+                    <p class="upload-status"><b>Status:</b> <span id="statusLabel">Unknown</span></p>
+                </fieldset>
+            </form>
+
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('file-upload');
+
+        // unknown
+        // input
+        // ready
+        // upload
+        // error
+        let currentState = 'unknown';
+        let uploadProgress = 0;
+
+        updateStatus(fileInput);
+
+        fileInput.addEventListener("change", (e) => {
+            updateStatus(e.target);
+        });
+
+        upload.addEventListener("click", handleFileUpload);
+
+        function updateStatus(input) {
+            const fileSelected = input.files.length > 0;
+            upload.disabled = !fileSelected;
+            switch (currentState) {
+                case 'unknown':
+                    if (fileSelected) {
+                        currentState = 'ready';
+                    } else {
+                        currentState = 'input';
+                    }
+                    break;
+                case 'input':
+                    if (fileSelected) {
+                        currentState = 'ready';
+                    }
+                    break;
+
+                default:
+                    break;
+            }
+            statusLabel.textContent = statusText(currentState);
+
+            upload.classList.replace(upload.classList[0], `status-${statusStyle(currentState)}`);
+        }
+
+        function statusStyle(status) {
+            switch (status) {
+                case 'upload':
+                    return 'busy';
+                case 'unknown':
+                case 'error':
+                    return status;
+                default:
+                    return 'ready'
+            }
+        }
+
+        function statusText(status) {
+            switch (status) {
+                case 'ready':
+                    return 'Ready for upload';
+                case 'input':
+                    return 'Select firmware';
+                case 'upload':
+                    const progress = Math.round(uploadProgress * 100 / (fileInput.files[0]?.size || 1));
+                    return `Uploading ${progress}%`;
+                case 'error':
+                    return 'Error';
+                default:
+                    return 'Uknown';
+            }
+        }
+
+        async function handleFileUpload(event) {
+            if (currentState === 'upload') {
+                return;
+            } else {
+                currentState = 'upload';
+                uploadProgress = 0;
+                updateStatus(fileInput);
+                try {
+                    const file = fileInput.files[0];
+                    const chunkSize = 2 * 1024; // size of each chunk (2KB)
+                    uploadProgress = 0;
+
+                    while (uploadProgress < file.size) {
+                        try {
+                            uploadProgress = await uploadChunk(file.slice(uploadProgress, uploadProgress + chunkSize), uploadProgress);
+                            updateStatus(fileInput);
+                        } catch (e) {
+                            console.log(e);
+                            currentState = 'error';
+                            throw e;
+                        }
+                    }
+                    await finishUpdate();
+                    currentState = 'ready';
+                } finally {
+                    updateStatus(fileInput);
+                }
+            }
+        }
+
+        async function finishUpdate() {
+            const response = await fetch('/firmware/finish', {
+                method: 'POST',
+            });
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+        }
+
+        async function uploadChunk(chunk, index, retries = 3) {
+            const formData = new FormData();
+            formData.append('chunk', chunk);
+            formData.append('index', index);
+
+            try {
+                const response = await fetch('/firmware/chunk', {
+                    method: 'POST',
+                    body: formData,
+                });
+                const text = await response.text();
+                if (response.ok) {
+                    return parseInt(text);
+                } else {
+                    throw new Error(text);
+                }
+            } catch (error) {
+                if (retries > 0) {
+                    return await uploadChunk(chunk, index, retries - 1);
+                } else {
+                    console.error('Failed to upload chunk: ', error);
+                    throw new Error(error);
+                }
+            }
+        }
+    </script>
+</body>
+
+</html>

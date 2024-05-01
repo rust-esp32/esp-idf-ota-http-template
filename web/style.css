@@ -1,0 +1,98 @@
+/* the props */
+@import "https://unpkg.com/open-props";
+
+@import "https://unpkg.com/open-props/normalize.min.css";
+@import "https://unpkg.com/open-props/buttons.min.css";
+
+@import "https://unpkg.com/open-props/indigo.min.css";
+@import "https://unpkg.com/open-props/indigo-hsl.min.css";
+@import "https://unpkg.com/open-props/easings.min.css";
+@import "https://unpkg.com/open-props/animations.min.css";
+@import "https://unpkg.com/open-props/sizes.min.css";
+@import "https://unpkg.com/open-props/gradients.min.css";
+
+html {
+    --background-light: var(--indigo-4);
+    --gradient-light: var(--gradient-15);
+
+    --backrgound-dark: var(--indigo-8);
+    --gradient-dark: var(--gradient-7)
+}
+
+:root {
+    color-scheme: light;
+    --background: var(--background-light);
+    --gradient: var(--gradient-light);
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        color-scheme: dark;
+        --background: var(--backrgound-dark);
+        --gradient: var(--gradient-dark);
+    }
+}
+
+body {
+    display: grid;
+    background-image: var(--gradient);
+    place-content: center;
+    align-items: center;
+}
+
+form>fieldset {
+    display: grid;
+    gap: var(--size-2);
+}
+
+path {
+    transform-origin: center center;
+}
+
+.status-unknown * path {
+    display: none;
+}
+
+.status-ready .ready {
+    display: block;
+}
+
+.status-busy .ready {
+    display: none;
+}
+
+.status-error .ready {
+    display: none;
+}
+
+.status-ready .busy {
+    display: none;
+}
+
+.status-busy .busy {
+    display: block;
+    animation: var(--animation-spin);
+}
+
+.status-error .busy {
+    display: none;
+}
+
+.status-ready .error {
+    display: none;
+}
+
+.status-busy .error {
+    display: none;
+}
+
+.status-error .error {
+    display: block;
+}
+
+
+/*
+button {
+    height: var(--size-9);
+}
+*/
